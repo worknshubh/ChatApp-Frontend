@@ -13,6 +13,8 @@ export default function HomePage() {
   const [userMessage, setUserMessage] = useState("");
   const [chatHistory, setchatHistory] = useState([]);
   const [currentRoom, setCurrentRoom] = useState(null);
+  const [searchedUser, setSearchedUser] = useState("");
+  const [searchedUserData, setSearchedUserData] = useState(null);
   useEffect(() => {
     socket.connect();
 
@@ -121,7 +123,26 @@ export default function HomePage() {
     const output = await res.json();
     if (output.success === true) {
       setlistUsers(output.usersList);
-      // console.log(output.usersList);
+      console.log(output.usersList);
+    }
+  }
+
+  async function searchUser() {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/user/search`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+      body: JSON.stringify({
+        userEmail: searchedUser,
+      }),
+    });
+
+    const output = await res.json();
+    console.log(output);
+    if (output.success === true) {
+      setSearchedUserData(output.user);
     }
   }
 
@@ -142,22 +163,46 @@ export default function HomePage() {
                 type="text"
                 name="userSearch"
                 id="userSearch"
-                placeholder="Search User"
+                placeholder="Enter User Email to search"
                 className="h-12 w-full focus:outline-none text-black p-2"
+                value={searchedUser}
+                onChange={(el) => {
+                  setSearchedUser(el.target.value);
+                }}
+                onKeyDown={(el) => {
+                  if (el.key === "Enter") {
+                    searchUser();
+                  }
+                }}
               />
             </div>
           </div>
-          {listUsers.map((el) => (
+          {searchedUser === "" ? (
+            listUsers.map((el) => (
+              <div
+                key={el._id}
+                onClick={() => {
+                  setisEmpty(false);
+                  setActiveUser(el);
+                  fetchChatRoom(el);
+                }}
+              >
+                <UserCard username={el.userName} />
+              </div>
+            ))
+          ) : searchedUserData ? (
             <div
               onClick={() => {
                 setisEmpty(false);
-                setActiveUser(el);
-                fetchChatRoom(el);
+                setActiveUser(searchedUserData);
+                fetchChatRoom(searchedUserData);
               }}
             >
-              <UserCard username={el.userName} />
+              <UserCard username={searchedUserData.userName} />
             </div>
-          ))}
+          ) : (
+            <></>
+          )}
         </div>
         {/* dynamic content  */}
         {isEmpty === true ? (
@@ -207,7 +252,7 @@ export default function HomePage() {
               </div>
             </div>
             {/* body  */}
-            <div className=" bg-white w-full overflow-y-auto h-200 mt-20">
+            <div className=" bg-white w-full overflow-y-auto h-170 mt-20">
               {chatHistory.map((el) => (
                 <Message
                   message={el.message}
@@ -218,10 +263,12 @@ export default function HomePage() {
                   }
                 />
               ))}
+
+              <div className="h-30"></div>
             </div>
 
             {/* message  */}
-            <div className="absolute fixed h-25 w-full bottom-0 flex items-center flex-row z-10 bg-transparent">
+            <div className="absolute fixed h-25 w-full bottom-0 flex items-center flex-row z-10 bg-white">
               <div className="m-4 border-2 border-blue-400 rounded-3xl w-[70%] h-17 ">
                 <input
                   type="text"
